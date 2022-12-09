@@ -42,20 +42,39 @@ type Point(x: int, y: int) =
 
     override this.ToString() = $"Point({x},{y})"
 
+type Rope (knots:Point list) =
+    member this.Knots = knots
+    member this.Head = knots.Head
+    
+    member this.MoveHead move =
+        Rope (knots.Head.Move move :: knots.Tail)
+    member this.Catchup () : Rope =
+        let rec catchupTail (knots: Point list) =
+            match knots with
+            | [] -> []
+            | [x] -> [x]
+            | a::b::rest ->
+                let b = b.Catchup a 
+                a::(catchupTail (b::rest))
+        let knots = catchupTail knots
+        Rope (knots)
+    member this.Tail =
+        knots |> List.skip (knots.Length - 1) |> List.head 
 
-type Map(visited: Set<int * int>, head: Point, tail: Point) =
+type Map(visited: Set<int * int>, rope: Rope) =
     member this.Visited = visited
-    member this.Head = head
-    member this.Tail = tail
+    member this.Head = rope.Head 
+    member this.Tail = rope.Tail 
 
     member this.Move(move: Move) =
-        let head = head.Move move
-        let tail = tail.Catchup head
+        let rope = rope.MoveHead move
+        let rope = rope.Catchup ()
         // let visited = visited.Add((head.X, head.Y))
-        let visited = visited.Add((tail.X, tail.Y))
-        Map(visited, head, tail)
+        let visited = visited.Add((rope.Tail.X, rope.Tail.Y))
+        Map(visited, rope)
 
-    static member start = Map(Set.singleton (0, 0), Point(0, 0), Point(0, 0))
+    static member start = Map(Set.singleton (0, 0), Rope([Point(0,0);Point(0,0)]))
+    static member start2 = Map(Set.singleton (0,0), Rope(Point(0,0) |> List.replicate 10))
 
 let rec processInput (lines: string list) =
     match lines with
@@ -97,3 +116,12 @@ printfn "MAP = "
 endMap.Visited |> List.ofSeq |> List.map (printfn "%A")
 
 printfn $"MAP.size = {endMap.Visited.Count}"
+
+let rope = Rope([Point(0,0);Point(0,0)])
+
+printfn $"rope.tail = {rope.Tail}"
+
+printfn "### TASK 2 ###"
+let endMap2 = process Map.start2 smoves
+
+printfn $"MAP.size = {endMap2.Visited.Count}"
